@@ -1,0 +1,118 @@
+name: Extract DuckDB Table
+
+on:
+  push:
+    paths:
+      - "**/*.duckdb"
+  workflow_dispatch:
+    inputs:
+      table_name:
+        description: "Table name to extract from the DuckDB file"
+        required: true
+      output_format:
+        description: "Output format: GPKG or PARQUET"
+        required: false
+        default: "GPKG"
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    env:
+      # fallback default; can be overridden by workflow_dispatch input
+      OUTPUT_FORMAT: GPKG
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed DuckDB file and table name
+        id: detect
+        run: |
+          set -euo pipefail
+          # find first .duckdb file changed in the current commit
+          DUCKDB_FILE=$(git diff-tree --no-commit-id --name-only -r ${GITHUB_SHA} | grep -E '\.duckdb$' | head -n1 || true)
+          if [ -z "$DUCKDB_FILE" ]; then
+            echo "No .duckdb file found in the commit. Exiting."
+            exit 1
+          fi
+          echo "DUCKDB_FILE=$DUCKDB_FILE" >> $GITHUB_ENV
+
+          # Read table name from workflow_dispatch input (when invoked manually)
+          TABLE_NAME_INPUT="${{ github.event.inputs.table_name }}"
+          if [ -n "$TABLE_NAME_INPUT" ]; then
+            TABLE_NAME="$TABLE_NAME_INPUT"
+          else
+            # allow providing TABLE_NAME as an env var when used in automated push runs
+            TABLE_NAME="${TABLE_NAME:-}"
+          fi
+          if [ -z "$TABLE_NAME" ]; then
+            echo "No table name provided. Provide via workflow_dispatch input 'table_name' or set env.TABLE_NAME." 
+            exit 1
+          fi
+          echo "TABLE_NAME=$TABLE_NAME" >> $GITHUB_ENV
+
+      - name: Install DuckDB and GDAL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin
+          python3 -m pip install --upgrade pip
+          python3 -m pip install duckdb
+
+      - name: Extract table to Parquet or GPKG
+        id: extract
+        run: |
+          set -euo pipefail
+          echo "Using DuckDB file: $DUCKDB_FILE"
+          echo "Table to extract: $TABLE_NAME"
+
+          # prefer dispatch input, else use env OUTPUT_FORMAT
+          OUTPUT_FORMAT_INPUT="${{ github.event.inputs.output_format }}"
+          if [ -n "$OUTPUT_FORMAT_INPUT" ]; then
+            OUTPUT_FORMAT="$OUTPUT_FORMAT_INPUT"
+          else
+            OUTPUT_FORMAT="${OUTPUT_FORMAT}"
+          fi
+          echo "Requested output format: $OUTPUT_FORMAT"
+
+          BASE_NAME="$(basename "$DUCKDB_FILE" .duckdb)-$TABLE_NAME"
+
+          if [ "${OUTPUT_FORMAT^^}" = "PARQUET" ]; then
+            python3 - <<'PY'
+              import os, duckdb
+              db=os.getenv('DUCKDB_FILE')
+              table=os.getenv('TABLE_NAME')
+              out=f"{os.path.splitext(os.path.basename(db))[0]}-{table}.parquet"
+              con=duckdb.connect(database=db, read_only=True)
+              con.execute(f"COPY (SELECT * FROM \"{table}\") TO '{out}' (FORMAT 'parquet');")
+              print(out)
+              PY
+            PARQUET_FILE=$(ls *.parquet 2>/dev/null || true)
+            if [ -z "$PARQUET_FILE" ]; then
+              echo "Parquet extraction failed or no parquet file found." >&2
+              exit 1
+            fi
+            echo "output_file=$PARQUET_FILE" >> $GITHUB_OUTPUT
+            echo "Created: $PARQUET_FILE"
+          else
+            # Create an intermediate Parquet then convert to GPKG using ogr2ogr
+            TMP_PQ="/tmp/${BASE_NAME}.parquet"
+            python3 - <<'PY'
+              import os, duckdb
+              db=os.getenv('DUCKDB_FILE')
+              table=os.getenv('TABLE_NAME')
+              out=f"/tmp/{os.path.splitext(os.path.basename(db))[0]}-{table}.parquet"
+              con=duckdb.connect(database=db, read_only=True)
+              con.execute(f"COPY (SELECT * FROM \"{table}\") TO '{out}' (FORMAT 'parquet');")
+              print(out)
+              PY
+            TMP_PQ_PATH=$(ls /tmp/*.parquet | grep "${BASE_NAME}" | head -n1 || true)
+            if [ -z "$TMP_PQ_PATH" ]; then
+              echo "Intermediate Parquet not created: exiting" >&2
+              exit 1
+            fi
+            OUT="${BASE_NAME}.${OUTPUT_FORMAT}"
+            ogr2ogr -f ${OUTPUT_FORMAT} "$OUT" "$TMP_PQ_PATH" || { echo "ogr2ogr conversion failed" >&2; exit 1; }
+            echo "output_file=$OUT" >> $GITHUB_OUTPUT
+            echo "Created: $OUT"
+          fi

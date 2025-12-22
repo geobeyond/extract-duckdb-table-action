@@ -1,0 +1,58 @@
+# Project
+[project]
+name = "extract-duckdb-tables-action"
+version = "0.1.0"
+description = "GitHub Action for extracting tables from DuckDB files"
+requires-python = ">=3.10"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+  "actions-tools[github]",
+  "duckdb>=1.3.2,<2.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "PyGitHub",
+  "bandit",
+  "pyyaml",
+  "ruff",
+  "tombi",
+  "ty",
+  "types-PyYAML",
+]
+test = [
+  "pytest>=8.0.0",
+  "pytest-cov>=4.1.0",
+  "pytest-mock>=3.12.0",
+]
+
+# Bandit
+# https://bandit.readthedocs.io/en/latest/config.html
+[tool.bandit]
+exclude_dirs = [".venv"]
+# Skip low-severity subprocess warnings for git commands
+skips = ["B404", "B603", "B607", "B110"]
+
+# Coverage
+# https://coverage.readthedocs.io/en/latest/
+[tool.coverage.run]
+omit = ["*/.venv/*", "*/__pycache__/*", "*.pyc"]
+source = ["src"]
+
+# Ruff
+# https://docs.astral.sh/ruff/configuration/
+[tool.ruff]
+line-length = 119
+target-version = "py310"
+extend-exclude = [".github"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "Q"]
+
+# Pytest
+# https://docs.pytest.org/en/stable/reference/customize.html
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

@@ -1,0 +1,93 @@
+name: "CI"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths:
+      - ".github/workflows/ci.yaml"
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: "Test Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Install UV"
+        uses: astral-sh/setup-uv@v4
+
+      - name: "Install Python ${{ matrix.python-version }}"
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: "Install dependencies"
+        run: uv sync --group test
+
+      - name: "Run tests with coverage"
+        run: |
+          uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: "Upload coverage to Codecov"
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: "Lint"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Install UV"
+        uses: astral-sh/setup-uv@v4
+
+      - name: "Install Python"
+        run: uv python install 3.12
+
+      - name: "Install dependencies"
+        run: uv sync --group dev
+
+      - name: "Ruff check"
+        run: uv run ruff check src/ tests/
+
+      - name: "Ruff format check"
+        run: uv run ruff format --check src/ tests/
+
+      - name: "Mypy"
+        run: uv run mypy src/
+        continue-on-error: true
+
+      - name: "Bandit security check"
+        run: uv run bandit -c pyproject.toml -r src/

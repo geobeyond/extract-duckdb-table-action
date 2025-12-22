@@ -1,0 +1,63 @@
+name: "Lint"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths:
+      - ".github/workflows/lint.yaml"
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: "Lint"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Install UV"
+        uses: astral-sh/setup-uv@v4
+
+      - name: "Install Python 3.12"
+        run: uv python install 3.12
+
+      - name: "Install Project"
+        run: uv sync --group dev
+
+      - name: "Ruff check"
+        if: ${{ !cancelled() }}
+        run: uv run ruff check src/ tests/
+
+      - name: "Ruff format check"
+        if: ${{ !cancelled() }}
+        run: uv run ruff format --check src/ tests/
+
+      - name: "ty"
+        if: ${{ !cancelled() }}
+        run: uv run ty check src/
+
+      - name: "Bandit security check"
+        if: ${{ !cancelled() }}
+        run: uv run bandit -c pyproject.toml -r src/
+
+      - name: "tombi"
+        if: ${{ !cancelled() }}
+        run: uv run tombi lint
+
+      - name: "hadolint"
+        if: ${{ !cancelled() }}
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile

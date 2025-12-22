@@ -1,0 +1,28 @@
+name: "Extract DuckDB Table"
+description: "GitHub Action for extracting tables from DuckDB files into GeoPackage or Parquet formats."
+author: "luipir"
+branding:
+  icon: "map"
+  color: "blue"
+
+inputs:
+  duckdb_file:
+    description: "Path to the DuckDB file."
+    required: true
+  table_name:
+    description: "Name of the table to extract from the DuckDB file."
+    required: true
+  output_format:
+    description: "Output format for the extracted table (GPKG or PARQUET)."
+    default: "GPKG"
+  token:
+    description: "GitHub Token"
+    default: ${{ github.token }}
+
+outputs:
+  output_file:
+    description: "The extracted output file path"
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
