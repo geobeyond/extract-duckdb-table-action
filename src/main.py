@@ -116,16 +116,14 @@ finally:
 
 # Check for previous commit and extract previous table if possible
 try:
-    repo_root = find_repo_root(duckdb_file_path.parent)
-    previous_commit = get_previous_commit(repo_root, token)
-    if previous_commit and has_file_in_commit(repo_root, duckdb_file_path.relative_to(repo_root), previous_commit):
+    repo_root = find_repo_root(str(duckdb_file_path.parent))
+    previous_commit = get_previous_commit(repo_root, int(token)) if repo_root else None
+    if repo_root and previous_commit and has_file_in_commit(repo_root, str(duckdb_file_path.relative_to(repo_root)), previous_commit):
         core.info(f"Found previous commit: {previous_commit}")
         previous_duckdb_path = get_file_from_commit(
             repo_root,
-            duckdb_file_path.relative_to(repo_root),
+            str(duckdb_file_path.relative_to(repo_root)),
             previous_commit,
-            token,
-            Path.cwd() / f"previous_{duckdb_file_path.name}",
         )
 
         # remember to cleanup temp duckdb file
