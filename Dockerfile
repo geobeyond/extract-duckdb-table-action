@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.authors="luipir"
 
 # Install git for git history mode
 RUN apk add --no-cache git==2.52.0-r0
-RUN apk add --no-cache g++
+RUN apk add --no-cache g++==15.2.0-r2
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
