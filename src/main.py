@@ -93,7 +93,9 @@ try:
     import duckdb
 
     with duckdb.connect(database=str(duckdb_file_path), read_only=True) as conn:
-        conn.execute(f"COPY (SELECT * FROM \"{table_name}\") TO '{output_file_path}' (FORMAT '{output_format.lower()}');")
+        conn.execute(
+            f"COPY (SELECT * FROM \"{table_name}\") TO '{output_file_path}' (FORMAT '{output_format.lower()}');"
+        )
         core.info(f"Extracted table '{table_name}' to {output_file_path}")
 
         # check that output file was created
@@ -131,7 +133,9 @@ try:
 
         core.info(f"Extracting previous table '{table_name}' from {previous_duckdb_path} to {previous_file_path}...")
         with duckdb.connect(database=str(previous_duckdb_path), read_only=True) as con_prev:
-            con_prev.execute(f"COPY (SELECT * FROM \"{table_name}\") TO '{previous_file_path}' (FORMAT '{output_format.lower()}');")
+            con_prev.execute(
+                f"COPY (SELECT * FROM \"{table_name}\") TO '{previous_file_path}' (FORMAT '{output_format.lower()}');"
+            )
             core.info(f"Extracted previous table '{table_name}' to {previous_file_path}")
 
             # check that previous output file was created
@@ -141,7 +145,9 @@ try:
 
         # diff beween current extracted file and previous version si delgated to a different action
     else:
-        core.info(f"No previous commit with the DuckDB file {duckdb_file_path} found; skipping previous table extraction.")
+        core.info(
+            f"No previous commit with the DuckDB file {duckdb_file_path} found; skipping previous table extraction."
+        )
 
 except GitError as ge:
     core.set_failed(f"Git error occurred: {ge}")
@@ -156,7 +162,7 @@ finally:
             Path(temp_file).unlink(missing_ok=True)
         except Exception:
             pass
-    
+
     # set outputs in the github context
     core.info("Setting action outputs...")
     core.set_output("current_file", str(output_file_path))
