@@ -93,8 +93,8 @@ try:
     import duckdb
 
     with duckdb.connect(database=str(duckdb_file_path), read_only=True) as conn:
-        conn.execute(
-            f"COPY (SELECT * FROM \"{table_name}\") TO '{output_file_path}' (FORMAT '{output_format.lower()}');"
+        conn.execute("COPY (SELECT * FROM \"?\") TO '?' (FORMAT '');",
+                     (table_name, str(output_file_path), output_format.lower())
         )
         core.info(f"Extracted table '{table_name}' to {output_file_path}")
 
@@ -131,8 +131,8 @@ try:
 
         core.info(f"Extracting previous table '{table_name}' from {previous_duckdb_path} to {previous_file_path}...")
         with duckdb.connect(database=str(previous_duckdb_path), read_only=True) as con_prev:
-            con_prev.execute(
-                f"COPY (SELECT * FROM \"{table_name}\") TO '{previous_file_path}' (FORMAT '{output_format.lower()}');"
+            con_prev.execute("COPY (SELECT * FROM \"?\") TO '?' (FORMAT '?');",
+                             (table_name, str(previous_file_path), output_format.lower())
             )
             core.info(f"Extracted previous table '{table_name}' to {previous_file_path}")
 
