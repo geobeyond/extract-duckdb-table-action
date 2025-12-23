@@ -1,12 +1,13 @@
-FROM ghcr.io/astral-sh/uv:python3.13-alpine
+FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.source="https://github.com/luipir/extract-duckdb-tables-action"
 LABEL org.opencontainers.image.description="Extract DuckDB Tables Action - GitHub Action for extracting tables from DuckDB files"
 LABEL org.opencontainers.image.authors="luipir"
 
 # Install git for git history mode
-RUN apk add --no-cache git==2.52.0-r0
-RUN apk add --no-cache g++==15.2.0-r2
+RUN apt-get update
+RUN apt-get install -y git python3 python3-venv python3-pip
+RUN pip install --break-system-packages uv
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
