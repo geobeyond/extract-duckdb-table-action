@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: "Test"
+  test-extract-between-commit:
+    name: "Text extract between two commits"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -38,43 +38,78 @@ jobs:
         continue-on-error: true
         run: env
 
-      - name: "Create test GeoPackage files"
+      - name: "Create DuckDB with commit history"
         run: |
+          # apt update
+          # apt install -y sqlite3 git duckdb
+
           mkdir -p test-data
           # Create base GeoPackage with sqlite3
           sqlite3 test-data/base.gpkg <<'EOF'
-          CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY, organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL, definition TEXT NOT NULL, description TEXT);
-          CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
-          CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
-          INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
-          CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT);
-          INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
-          INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
-          INSERT INTO test_layer (fid, name) VALUES (1, 'Point A');
-          INSERT INTO test_layer (fid, name) VALUES (2, 'Point B');
+            CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY, organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL, definition TEXT NOT NULL, description TEXT);
+            CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
+            CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
+            INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
+            CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT);
+            INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
+            INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
+            INSERT INTO test_layer (fid, name) VALUES (1, 'Point A');
+            INSERT INTO test_layer (fid, name) VALUES (2, 'Point B');
           EOF
 
           # Create compare GeoPackage with modifications
-          sqlite3 test-data/compare.gpkg <<'EOF'
-          CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY, organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL, definition TEXT NOT NULL, description TEXT);
-          CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
-          CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
-          INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
-          CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT);
-          INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
-          INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
-          INSERT INTO test_layer (fid, name) VALUES (1, 'Point A Modified');
-          INSERT INTO test_layer (fid, name) VALUES (3, 'Point C');
+          # sqlite3 test-data/compare.gpkg <<'EOF'
+          #   CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY, organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL, definition TEXT NOT NULL, description TEXT);
+          #   CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
+          #   CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
+          #   INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
+          #   CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT);
+          #   INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
+          #   INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
+          #   INSERT INTO test_layer (fid, name) VALUES (1, 'Point A Modified');
+          #   INSERT INTO test_layer (fid, name) VALUES (3, 'Point C');
+          # EOF
+
+          # create Duckdb database for testing adding base.gpkg as a table
+          duckdb test-data/test.duckdb <<'EOF'
+            INSTALL spatial;
+            LOAD spatial;
+            CREATE TABLE test_layer AS SELECT * FROM read_geopackage('test-data/base.gpkg', 'test_layer');
           EOF
+
+          # create git repository for testing git history mode
+          git init test-data
+          cd test-data
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+          # add test.duckdb to git
+          git add test.duckdb
+          git commit -m "Add base duckdb filled with base.gpkg data"
+          cd ..
+
+          # modify test.duckdb to reflect changes in compare.gpkg
+          duckdb test-data/test.duckdb <<'EOF'
+            INSTALL spatial;
+            LOAD spatial;
+            DELETE FROM test_layer WHERE fid = 2;
+            UPDATE test_layer SET name = 'Point A Modified' WHERE fid = 1;
+            INSERT INTO test_layer (fid, name) VALUES (3, 'Point C');
+          EOF
+
+          # commit modified test.duckdb
+          cd test-data
+          git add test.duckdb
+          git commit -m "Modify duckdb to reflect changes in compare.gpkg"
+          cd ..
 
       - name: "Test Local Action"
         id: test
         uses: ./
         with:
-          base_file: "test-data/base.gpkg"
-          compare_file: "test-data/compare.gpkg"
-          output_format: "json"
-          summary: ${{ !github.event.act }}
+          duckdb_file: "test-data/test.duckdb"
+          table_name: "test_layer"
+          output_format: "GPKG"
 
       - name: "Check Outputs"
         env:
