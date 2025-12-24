@@ -36,7 +36,6 @@ core.info(f"table_name: \033[36;1m{table_name}")
 output_format: str = core.get_input("output_format") or "GPKG"
 core.info(f"output_format: \033[35;1m{output_format}")
 token: str = core.get_input("token", True)
-core.info(f"token: \033[35;1m{token}")
 
 # Debug
 
