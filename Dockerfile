@@ -5,9 +5,12 @@ LABEL org.opencontainers.image.description="Extract DuckDB Tables Action - GitHu
 LABEL org.opencontainers.image.authors="luipir"
 
 # Install git for git history mode
-RUN apt-get update
-RUN apt-get install -y git python3 python3-venv python3-pip
-RUN pip install --break-system-packages uv
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates=20230601 curl=8.2.1-1 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get install --no-install-recommends -y git=2.43.0 python3=3.12.0-1 python3-venv=3.12.0-1 python3-pip=23.0.1-4 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir --break-system-packages uv==1.9.8
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
