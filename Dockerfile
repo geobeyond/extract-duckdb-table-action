@@ -4,13 +4,18 @@ LABEL org.opencontainers.image.source="https://github.com/luipir/extract-duckdb-
 LABEL org.opencontainers.image.description="Extract DuckDB Tables Action - GitHub Action for extracting tables from DuckDB files"
 LABEL org.opencontainers.image.authors="luipir"
 
-# Install git for git history mode
+# Install git for git history mode and all necessary packages for Python and uv
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates=20230601 curl=8.2.1-1 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-RUN apt-get install --no-install-recommends -y git=2.43.0 python3=3.12.0-1 python3-venv=3.12.0-1 python3-pip=23.0.1-4 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir --break-system-packages uv==1.9.8
+    apt-get install -y --no-install-recommends \
+        ca-certificates=20230311+deb12u1 \
+        curl=7.88.1-10+deb12u14 \
+        git=1:2.39.5-0+deb12u2 \
+        python3=3.11.2-1+b1 \
+        python3-venv=3.11.2-1+b1 \
+        python3-pip=23.0.1+dfsg-1 && \
+        apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --break-system-packages uv==0.9.18
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
