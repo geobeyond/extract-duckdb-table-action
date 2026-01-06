@@ -6,7 +6,7 @@ Writye a .secret file with GITHB_TOKEN=... token get from https://github.com/set
 
 ## Run linting
 
-`act -j linting -P ubuntu-latest=node:16-buster-slim`
+`act -j lint -P ubuntu-latest=node:16-buster-slim`
 
 NOTE: need -P ubuntu-latest=node:16-buster-slim because need a distribution with node installed
 
