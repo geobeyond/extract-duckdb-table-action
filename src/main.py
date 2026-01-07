@@ -84,13 +84,14 @@ try:
     import duckdb
 
     with duckdb.connect(database=str(duckdb_file_path), read_only=True) as conn:
-
         # conn.execute(
         #     "COPY (SELECT * FROM \"?\") TO ? (FORMAT ?);", [f'"{table_name}"', f"'{str(output_file_path)}'", f"'{output_format.lower()}'"],
         # )
         conn.execute("INSTALL spatial;")
         conn.execute("LOAD spatial;")
-        conn.execute(f"COPY (SELECT * FROM \"{table_name}\") TO '{str(output_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');")
+        conn.execute(
+            f"COPY (SELECT * FROM \"{table_name}\") TO '{str(output_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');"
+        )
         core.info(f"Extracted table '{table_name}' to {output_file_path}")
 
         # check that output file was created
@@ -139,7 +140,9 @@ try:
         with duckdb.connect(database=str(previous_duckdb_path), read_only=True) as con_prev:
             con_prev.execute("INSTALL spatial;")
             con_prev.execute("LOAD spatial;")
-            con_prev.execute(f"COPY (SELECT * FROM \"{table_name}\") TO '{str(previous_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');")
+            con_prev.execute(
+                f"COPY (SELECT * FROM \"{table_name}\") TO '{str(previous_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');"
+            )
             core.info(f"Extracted previous table '{table_name}' to {previous_file_path}")
 
             # check that previous output file was created
