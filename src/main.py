@@ -89,9 +89,17 @@ try:
         # )
         conn.execute("INSTALL spatial;")
         conn.execute("LOAD spatial;")
+
+        # enable duckdb debug logging
+        # conn.execute("CALL enable_logging(level = 'debug');")
+        # conn.execute("CALL enable_logging(storage = 'stdout');")
+
+        # conn.execute(f"select * from query_table($1) limit $2", [table_name, 10])  # test query to check table existence
         conn.execute(
-            f"COPY (SELECT * FROM \"{table_name}\") TO '{str(output_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');"
+            "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3);",
+            [table_name, str(output_file_path), output_format.upper()],
         )
+
         core.info(f"Extracted table '{table_name}' to {output_file_path}")
 
         # check that output file was created
@@ -140,10 +148,14 @@ try:
         with duckdb.connect(database=str(previous_duckdb_path), read_only=True) as con_prev:
             con_prev.execute("INSTALL spatial;")
             con_prev.execute("LOAD spatial;")
+
+            # con_prev.execute("CALL enable_logging(level = 'debug');")
+            # con_prev.execute("CALL enable_logging(storage = 'stdout');")
+
             con_prev.execute(
-                f"COPY (SELECT * FROM \"{table_name}\") TO '{str(previous_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');"
+                "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3);",
+                [table_name, str(previous_file_path), output_format.upper()],
             )
-            core.info(f"Extracted previous table '{table_name}' to {previous_file_path}")
 
             # check that previous output file was created
             if not previous_file_path.exists():
