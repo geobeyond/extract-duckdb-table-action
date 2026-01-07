@@ -44,20 +44,10 @@ with core.group("uv"):
     functions.check_output("uv python dir", False)
 
 
-event: dict = core.get_event()
-with core.group("GitHub Event Data"):
-    core.info(json.dumps(event, indent=4))
-
-
 ctx = {k: v for k, v in vars(context).items() if not k.startswith("__")}
 del ctx["os"]
 with core.group("GitHub Context Data"):
-    core.info(json.dumps(ctx, indent=4))
-
-
-repository: dict = event.get("repository", {})
-html_url: str = repository.get("html_url", "")
-core.info(f"repository.html_url: {html_url}")
+    core.debug(json.dumps(ctx, indent=4))
 
 
 # Action Logic
@@ -84,18 +74,23 @@ elif output_format.upper() == "PARQUET":
 else:
     core.set_failed(f"Unsupported output format: {output_format}")
     raise SystemExit(1)
-output_file_path = Path.cwd() / current_file_name
-previous_file_path = Path.cwd() / previous_file_name
+
+# Extract paths from duckdb_file_path
+output_file_path: Path = duckdb_file_path.parent / current_file_name
+previous_file_path: Path = duckdb_file_path.parent / previous_file_name
 # Extract current table
 core.info(f"Extracting current table '{table_name}' from {duckdb_file_path} to {output_file_path}...")
 try:
     import duckdb
 
     with duckdb.connect(database=str(duckdb_file_path), read_only=True) as conn:
-        conn.execute(
-            "COPY (SELECT * FROM \"?\") TO '?' (FORMAT '');",
-            (table_name, str(output_file_path), output_format.lower()),
-        )
+
+        # conn.execute(
+        #     "COPY (SELECT * FROM \"?\") TO ? (FORMAT ?);", [f'"{table_name}"', f"'{str(output_file_path)}'", f"'{output_format.lower()}'"],
+        # )
+        conn.execute("INSTALL spatial;")
+        conn.execute("LOAD spatial;")
+        conn.execute(f"COPY (SELECT * FROM \"{table_name}\") TO '{str(output_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');")
         core.info(f"Extracted table '{table_name}' to {output_file_path}")
 
         # check that output file was created
@@ -114,10 +109,12 @@ finally:
         except Exception:
             pass
 
+core.info("Current table extraction completed SUCCESSFULLY")
+
 # Check for previous commit and extract previous table if possible
 try:
     repo_root = find_repo_root(str(duckdb_file_path.parent))
-    previous_commit = get_previous_commit(repo_root, int(token)) if repo_root else None
+    previous_commit = get_previous_commit(repo_root, offset=1) if repo_root else None
     if (
         repo_root
         and previous_commit
@@ -130,15 +127,19 @@ try:
             previous_commit,
         )
 
+        # check if previous_duckdb_path exists
+        if not Path(previous_duckdb_path).exists():
+            core.set_failed(f"Previous DuckDB file was not extracted: {previous_duckdb_path}")
+            raise SystemExit(1)
+
         # remember to cleanup temp duckdb file
-        temp_files_to_cleanup.append(str(previous_duckdb_path))
+        # temp_files_to_cleanup.append(str(previous_duckdb_path))
 
         core.info(f"Extracting previous table '{table_name}' from {previous_duckdb_path} to {previous_file_path}...")
         with duckdb.connect(database=str(previous_duckdb_path), read_only=True) as con_prev:
-            con_prev.execute(
-                "COPY (SELECT * FROM \"?\") TO '?' (FORMAT '?');",
-                (table_name, str(previous_file_path), output_format.lower()),
-            )
+            con_prev.execute("INSTALL spatial;")
+            con_prev.execute("LOAD spatial;")
+            con_prev.execute(f"COPY (SELECT * FROM \"{table_name}\") TO '{str(previous_file_path)}' (FORMAT 'GDAL', DRIVER '{output_format.upper()}');")
             core.info(f"Extracted previous table '{table_name}' to {previous_file_path}")
 
             # check that previous output file was created
