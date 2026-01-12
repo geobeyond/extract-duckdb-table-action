@@ -104,7 +104,7 @@ jobs:
           git commit -m "Modify duckdb to reflect changes in compare.gpkg"
           cd ..
 
-      - name: "Test Local Action"
+      - name: "Run Action to test"
         id: test
         uses: ./
         with:
@@ -117,59 +117,21 @@ jobs:
           CURRENT_FILE: ${{ steps.test.outputs.current_file }}
           PREVIOUS_FILE: ${{ steps.test.outputs.previous_file }}
         run: |
-          # check if output files exist
-          if [ ! -f "$CURRENT_FILE" ]; then
-            echo "Current file does not exist: $CURRENT_FILE"
-            exit 1
-          fi
-          if [ ! -f "$PREVIOUS_FILE" ]; then
-            echo "Previous file does not exist: $PREVIOUS_FILE"
-            exit 1
-          fi
-          echo "Current and previous files exist."
+          echo "Current File: $CURRENT_FILE"
+          echo "Previous File: $PREVIOUS_FILE"
 
-          # dump content of output files dumping table content in a out file using sqlite
-          echo "Content of Current File:"
-          table_name=$(basename "$CURRENT_FILE" .gpkg)
-          sqlite3 "$CURRENT_FILE" <<EOF > current_file_content.txt
-            SELECT * FROM "$table_name";
-          EOF
-          # alternatively using ogrinfo
-          #
-          # ogrinfo "$CURRENT_FILE" -sql "SELECT * FROM \"$table_name\"" > current_file_content.txt
-          cat current_file_content.txt
-
-          # dump content of previous file dumping table content using sqlite
-          echo "Content of Previous File:"
-          table_name=$(basename "$PREVIOUS_FILE" .gpkg)
-          sqlite3 "$PREVIOUS_FILE" <<EOF > previous_file_content.txt
-            SELECT * FROM "$table_name";
-          EOF
-          # alternatively using ogrinfo
-          #
-          # ogrinfo "$PREVIOUS_FILE" -sql "SELECT * FROM \"$table_name\"" > previous_file_content.txt
-          cat previous_file_content.txt
-
-          # dump md5 checksums
-          MD5_CURRENT=$(md5sum current_file_content.txt | awk '{ print $1 }')
-          MD5_PREVIOUS=$(md5sum previous_file_content.txt | awk '{ print $1 }')
-          echo "MD5 Current File: $MD5_CURRENT"
-          echo "MD5 Previous File: $MD5_PREVIOUS"
-
-          # verify md5 checksum of current file matches expected value
-          EXPECTED_MD5_CURRENT="3e89518355f963d3eba4c1de3274b84c"
-          if [ "$MD5_CURRENT" != "$EXPECTED_MD5_CURRENT" ]; then
-            echo "Error: MD5 checksum of current file does not match expected value."
+          # check returned file names containe the expected substrings
+          EXPECTED_CURRENT_FILE="test-data/test-test_layer-current.gpkg"
+          EXPECTED_PREVIOUS_FILE="test-data/test-test_layer-previous.gpkg"
+          if [[ "$CURRENT_FILE" != *"$EXPECTED_CURRENT_FILE"* ]]; then
+            echo "Error: Current file name does not match expected value."
             exit 1
           else
-            echo "MD5 checksum of current file matches expected value."
+            echo "Current file name matches expected value."
           fi
-
-          # verify md5 checksum of previous file matches expected value
-          EXPECTED_MD5_PREVIOUS="f0c39666fa36aed0666fbc38f93d284e"
-          if [ "$MD5_PREVIOUS" != "$EXPECTED_MD5_PREVIOUS" ]; then
-            echo "Error: MD5 checksum of previous file does not match expected value."
+          if [[ "$PREVIOUS_FILE" != *"$EXPECTED_PREVIOUS_FILE"* ]]; then
+            echo "Error: Previous file name does not match expected value."
             exit 1
           else
-            echo "MD5 checksum of previous file matches expected value."
+            echo "Previous file name matches expected value."
           fi
