@@ -120,6 +120,33 @@ jobs:
           echo "Current File: $CURRENT_FILE"
           echo "Previous File: $PREVIOUS_FILE"
 
+          current="test-data/"$(basename "$CURRENT_FILE")
+          previous="test-data/"$(basename "$PREVIOUS_FILE")
+
+          # dump contents of geopackage files for debugging
+          # echo "Contents of current file:"
+          # sqlite3 "$current" ".tables"
+          # echo "Contents of previous file:"
+          # sqlite3 "$previous" ".tables"
+          # echo "--------------------------------"
+
+          # check that in both geopackage files the table exists (using sqlite3)
+          TABLE_NAME="test_layer"
+          if sqlite3 "$current" "SELECT table_name FROM gpkg_contents WHERE table_name = '$TABLE_NAME';" | grep -q "$TABLE_NAME"; then
+            echo "Table '$TABLE_NAME' exists in current file."
+          else
+            echo "Error: Table '$TABLE_NAME' does not exist in current file."
+            exit 1
+          fi
+
+          if sqlite3 "$previous" "SELECT table_name FROM gpkg_contents WHERE table_name = '$TABLE_NAME';" | grep -q "$TABLE_NAME"; then
+            echo "Table '$TABLE_NAME' exists in previous file."
+          else
+            echo "Error: Table '$TABLE_NAME' does not exist in previous file."
+            exit 1
+          fi
+
+
           # check returned file names containe the expected substrings
           EXPECTED_CURRENT_FILE="test-data/test-test_layer-current.gpkg"
           EXPECTED_PREVIOUS_FILE="test-data/test-test_layer-previous.gpkg"
