@@ -1,8 +1,9 @@
 # How to run github action with ACT locally
 
-## Setup GITHB_TOKEN
+## Setup GITHUB_TOKEN
 
-Writye a .secret file with GITHB_TOKEN=... token get from https://github.com/settings/personal-access-tokens
+Write a .secrets file with GITHUB_TOKEN=...
+token get from https://github.com/settings/personal-access-tokens
 
 ## Run linting
 
