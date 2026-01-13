@@ -64,13 +64,21 @@ if not duckdb_file_path.exists():
     raise SystemExit(1)
 table_name_safe = "".join(c if c.isalnum() else "_" for c in table_name)
 current_file_name = f"{duckdb_file_path.stem}-{table_name_safe}-current"
+current_tablebased_file_name = f"{table_name_safe}"
+
 previous_file_name = f"{duckdb_file_path.stem}-{table_name_safe}-previous"
+previous_tablebased_file_name = f"{table_name_safe}"
+
 if output_format.upper() == "GPKG":
     current_file_name += ".gpkg"
+    current_tablebased_file_name += ".gpkg"
     previous_file_name += ".gpkg"
+    previous_tablebased_file_name += ".gpkg"
 elif output_format.upper() == "PARQUET":
     current_file_name += ".parquet"
+    current_tablebased_file_name += ".parquet"
     previous_file_name += ".parquet"
+    previous_tablebased_file_name += ".parquet"
 else:
     core.set_failed(f"Unsupported output format: {output_format}")
     raise SystemExit(1)
@@ -84,9 +92,6 @@ try:
     import duckdb
 
     with duckdb.connect(database=str(duckdb_file_path), read_only=True) as conn:
-        # conn.execute(
-        #     "COPY (SELECT * FROM \"?\") TO ? (FORMAT ?);", [f'"{table_name}"', f"'{str(output_file_path)}'", f"'{output_format.lower()}'"],
-        # )
         conn.execute("INSTALL spatial;")
         conn.execute("LOAD spatial;")
 
@@ -94,11 +99,14 @@ try:
         # conn.execute("CALL enable_logging(level = 'debug');")
         # conn.execute("CALL enable_logging(storage = 'stdout');")
 
-        # conn.execute(f"select * from query_table($1) limit $2", [table_name, 10])  # test query to check table existence
+        # need to copy in table based filename to have the tablename inside the file match
         conn.execute(
             "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3);",
-            [table_name, str(output_file_path), output_format.upper()],
+            [table_name, str(current_tablebased_file_name), output_format.upper()],
         )
+
+        # move to final output location
+        Path(current_tablebased_file_name).rename(output_file_path)
 
         core.info(f"Extracted table '{table_name}' to {output_file_path}")
 
@@ -152,10 +160,14 @@ try:
             # con_prev.execute("CALL enable_logging(level = 'debug');")
             # con_prev.execute("CALL enable_logging(storage = 'stdout');")
 
+            # need to copy in table based filename to have the tablename inside the file match
             con_prev.execute(
                 "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3);",
-                [table_name, str(previous_file_path), output_format.upper()],
+                [table_name, str(previous_tablebased_file_name), output_format.upper()],
             )
+
+            # move to final output location
+            Path(previous_tablebased_file_name).rename(previous_file_path)
 
             # check that previous output file was created
             if not previous_file_path.exists():
