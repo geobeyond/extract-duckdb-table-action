@@ -11,7 +11,7 @@ token get from https://github.com/settings/personal-access-tokens
 
 NOTE: need -P ubuntu-latest=node:16-buster-slim because need a distribution with node installed
 
-## Run tests
+## Run test-extract-between-commit tests
 
 `act -j test-extract-between-commit`
 
@@ -20,6 +20,10 @@ or
 `act -j test-extract-between-commit -P ubuntu-latest=catthehacker/ubuntu:act-latest`
 
 note: list all jobs available with `act --list`
+
+# run generic tests
+
+`act -j test -P ubuntu-latest=catthehacker/ubuntu:act-latest`
 
 
 ## Notes about Image used by ACT
