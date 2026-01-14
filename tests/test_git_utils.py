@@ -14,6 +14,7 @@ from git_utils import (
     find_repo_root,
     get_file_from_commit,
     get_previous_commit,
+    get_previous_commit_for_file,
     has_file_in_commit,
     is_git_repo,
 )
@@ -105,6 +106,33 @@ class TestFindRepoRoot:
         """Test that nonexistent path returns None."""
         repo_root = find_repo_root("/nonexistent/path/file.gpkg")
         assert repo_root is None
+
+
+class TestGetPreviousCommitForFile:
+    """Tests for get_previous_commit_for_file function."""
+
+    def test_get_previous_commit_for_file(self, git_repo):
+        """Test getting the previous commit hash."""
+        prev_commit = get_previous_commit_for_file(str(git_repo), file_name="test.gpkg")
+        assert prev_commit is not None
+        assert len(prev_commit) == 40  # Full SHA hash
+
+    def test_get_previous_commit_for_file_with_offset_ok(self, git_repo):
+        """Test getting commit with offset."""
+        # HEAD~1 should be the first commit
+        prev_commit = get_previous_commit_for_file(str(git_repo), file_name="test.gpkg", offset=1)
+        assert prev_commit is not None
+
+    def test_get_previous_commit_for_file_with_offset_noavailable(self, git_repo):
+        """Test getting commit with offset."""
+        # HEAD~1 should be the first commit
+        prev_commit = get_previous_commit_for_file(str(git_repo), file_name="test.gpkg", offset=2)
+        assert prev_commit == ''
+
+    def test_get_previous_commit_non_git(self, non_git_dir):
+        """Test that non-git directory raises error."""
+        with pytest.raises(GitError, match="Not a git repository"):
+            get_previous_commit(str(non_git_dir))
 
 
 class TestGetPreviousCommit:

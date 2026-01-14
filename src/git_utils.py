@@ -89,6 +89,38 @@ def find_repo_root(file_path: str) -> str | None:
         return None
 
 
+def get_previous_commit_for_file(repo_path: str, file_name: str, offset: int = 0) -> str:
+    """
+    Get the commit hash of a previous commit for a specific file.
+
+    Args:
+        repo_path: Path to the git repository.
+        file_name: Relative path to the file within the repository.
+        offset: Number of related file commits to go back (0 = HEAD, 1 = HEAD~1, etc.)
+
+    Returns:
+        The full commit hash.
+
+    Raises:
+        GitError: If not a git repository or no previous commit exists.
+    """
+    _mark_safe_directory(repo_path)
+
+    if not is_git_repo(repo_path):
+        raise GitError(f"Not a git repository: {repo_path}")
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", repo_path, "rev-list", "-n1", f"--skip={offset}", "HEAD", "--", file_name],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        raise GitError(f"No previous commit found at HEAD~{offset}") from e
+
+
 def get_previous_commit(repo_path: str, offset: int = 1) -> str:
     """
     Get the commit hash of a previous commit.

@@ -13,7 +13,7 @@ from pathlib import Path
 from actions import context, core
 
 import functions
-from git_utils import GitError, find_repo_root, get_file_from_commit, get_previous_commit, has_file_in_commit
+from git_utils import GitError, find_repo_root, get_file_from_commit, has_file_in_commit, get_previous_commit_for_file
 
 # Configure git to trust all directories (needed for Docker containers)
 # This must be done early before any git operations
@@ -131,7 +131,7 @@ core.info("Current table extraction completed SUCCESSFULLY")
 # Check for previous commit and extract previous table if possible
 try:
     repo_root = find_repo_root(str(duckdb_file_path.parent))
-    previous_commit = get_previous_commit(repo_root, offset=1) if repo_root else None
+    previous_commit = get_previous_commit_for_file(repo_root, str(duckdb_file_path.relative_to(repo_root)), offset=1) if repo_root else None
     if (
         repo_root
         and previous_commit
