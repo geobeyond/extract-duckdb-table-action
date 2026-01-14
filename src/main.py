@@ -131,7 +131,11 @@ core.info("Current table extraction completed SUCCESSFULLY")
 # Check for previous commit and extract previous table if possible
 try:
     repo_root = find_repo_root(str(duckdb_file_path.parent))
-    previous_commit = get_previous_commit_for_file(repo_root, str(duckdb_file_path.relative_to(repo_root)), offset=1) if repo_root else None
+    previous_commit = (
+        get_previous_commit_for_file(repo_root, str(duckdb_file_path.relative_to(repo_root)), offset=1)
+        if repo_root
+        else None
+    )
     if (
         repo_root
         and previous_commit

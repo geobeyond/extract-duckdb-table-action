@@ -127,7 +127,7 @@ class TestGetPreviousCommitForFile:
         """Test getting commit with offset."""
         # HEAD~1 should be the first commit
         prev_commit = get_previous_commit_for_file(str(git_repo), file_name="test.gpkg", offset=2)
-        assert prev_commit == ''
+        assert prev_commit == ""
 
     def test_get_previous_commit_non_git(self, non_git_dir):
         """Test that non-git directory raises error."""
