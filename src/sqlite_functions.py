@@ -12,9 +12,7 @@ def set_primary_key(table_name: str, primary_key_columns: List[str], conn) -> No
     temp_table_name = f"{table_name}_temp_pk"
     conn.execute("BEGIN TRANSACTION;")
     # get schema of existing table
-    result = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?;", (table_name,)
-    ).fetchone()
+    result = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?;", (table_name,)).fetchone()
     if not result:
         raise ValueError(f"Table {table_name} does not exist.")
 
