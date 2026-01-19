@@ -13,7 +13,7 @@ def set_primary_key(table_name: str, primary_key_columns: List[str], conn) -> No
     conn.execute("BEGIN TRANSACTION;")
     # get schema of existing table
     result = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?;", (f"'{table_name}'",)
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?;", (table_name,)
     ).fetchone()
     if not result:
         raise ValueError(f"Table {table_name} does not exist.")
@@ -41,9 +41,11 @@ def set_primary_key(table_name: str, primary_key_columns: List[str], conn) -> No
     # create new table with modified schema
     conn.execute(create_table_sql_with_new_pk.replace(table_name, temp_table_name))
     # copy data into new table
-    conn.execute("INSERT INTO ? SELECT * FROM ?;", (temp_table_name, table_name))
+    q = f"INSERT INTO {temp_table_name} SELECT * FROM {table_name};"
+    conn.execute(q)
 
     # drop old table and rename new table
     conn.execute(f"DROP TABLE {table_name};")
-    conn.execute(f"ALTER TABLE {temp_table_name} RENAME TO {table_name};")
+    q = f"ALTER TABLE {temp_table_name} RENAME TO {table_name};"
+    conn.execute(q)
     conn.execute("COMMIT;")
