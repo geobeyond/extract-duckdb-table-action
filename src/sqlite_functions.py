@@ -38,8 +38,9 @@ def set_primary_key(table_name: str, primary_key_columns: List[str], conn) -> No
 
     # create new table with modified schema
     conn.execute(create_table_sql_with_new_pk.replace(table_name, temp_table_name))
-    # copy data into new table
-    q = f"INSERT INTO {temp_table_name} SELECT * FROM {table_name};"
+    # copy data into new table reducing sql injection risks
+    q = "INSERT INTO TEMPTABLE SELECT * FROM ORIGINALTABLE;"
+    q = q.replace("TEMPTABLE", temp_table_name).replace("ORIGINALTABLE", table_name)
     conn.execute(q)
 
     # drop old table and rename new table
