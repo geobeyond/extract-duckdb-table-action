@@ -7,6 +7,7 @@
 # where previous refers to the version in the previous commit.
 
 import json
+import sqlite3
 import subprocess
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from actions import context, core
 
 import functions
 from git_utils import GitError, find_repo_root, get_file_from_commit, has_file_in_commit, get_previous_commit_for_file
+from sqlite_functions import set_primary_key
 
 # Configure git to trust all directories (needed for Docker containers)
 # This must be done early before any git operations
@@ -115,6 +117,16 @@ try:
             core.set_failed(f"Output file was not created: {output_file_path}")
             raise SystemExit(1)
 
+    # need to set primary key as "address_id" + "road_id" to avoid issues when diffing with geodiff
+    # the only way to do this is to use SQL to create a new table with the primary key set, then compy into that table
+    with sqlite3.connect(str(output_file_path)) as conn:
+        core.info(f"Setting primary key on extracted table '{table_name}' in {output_file_path}...")
+        set_primary_key(
+            table_name,
+            ["address_id", "road_id"],
+            conn,
+        )
+
 except Exception as e:
     core.set_failed(f"Failed to extract table '{table_name}': {e}")
     raise SystemExit(1) from e
@@ -182,6 +194,16 @@ try:
     else:
         core.info(
             f"No previous commit with the DuckDB file {duckdb_file_path} found; skipping previous table extraction."
+        )
+
+    # need to set primary key as "address_id" + "road_id" to avoid issues when diffing with geodiff
+    # the only way to do this is to use SQL to create a new table with the primary key set, then compy into that table
+    with sqlite3.connect(str(previous_file_path)) as conn:
+        core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
+        set_primary_key(
+            table_name,
+            ["address_id", "road_id"],
+            conn,
         )
 
 except GitError as ge:
