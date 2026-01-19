@@ -10,7 +10,7 @@ from sqlite_functions import set_primary_key
 class TestSetPrimaryKey:
     """Tests for the set_primary_key function."""
 
-    def test_set_primary_key(self, base_gpkg, tmp_path):
+    def test_set_primary_key(self, base_gpkg):
         """Test that set_primary_key duplicate table adding primary keys."""
         import sqlite3
 
