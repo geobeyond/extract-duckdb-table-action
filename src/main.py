@@ -102,8 +102,11 @@ try:
         # conn.execute("CALL enable_logging(storage = 'stdout');")
 
         # need to copy in table based filename to have the tablename inside the file match
+        # NOTE: we must use the same LAYER_CREATION_OPTIONS setting FID=address_id to avoid
+        # to generate fid column automatically that generate differences when diffing
+        # actually no way to setupt a more columns as PK in GDAL export, so we just set FID=address_id here
         conn.execute(
-            "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3);",
+            "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=address_id');",
             [table_name, str(current_tablebased_file_name), output_format.upper()],
         )
 
@@ -117,7 +120,7 @@ try:
             core.set_failed(f"Output file was not created: {output_file_path}")
             raise SystemExit(1)
 
-    # need to set primary key as "address_id" + "road_id" to avoid issues when diffing with geodiff
+    # need to set primary key as "address_id" + "road_id"
     # the only way to do this is to use SQL to create a new table with the primary key set, then compy into that table
     with sqlite3.connect(str(output_file_path)) as conn:
         core.info(f"Setting primary key on extracted table '{table_name}' in {output_file_path}...")
@@ -177,8 +180,11 @@ try:
             # con_prev.execute("CALL enable_logging(storage = 'stdout');")
 
             # need to copy in table based filename to have the tablename inside the file match
+            # NOTE: we must use the same LAYER_CREATION_OPTIONS setting FID=address_id to avoid
+            # to generate fid column automatically that generate differences when diffing
+            # actually no way to setupt a more columns as PK in GDAL export, so we just set FID=address_id here
             con_prev.execute(
-                "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3);",
+                "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=address_id');",
                 [table_name, str(previous_tablebased_file_name), output_format.upper()],
             )
 
@@ -196,7 +202,7 @@ try:
             f"No previous commit with the DuckDB file {duckdb_file_path} found; skipping previous table extraction."
         )
 
-    # need to set primary key as "address_id" + "road_id" to avoid issues when diffing with geodiff
+    # need to set primary key as "address_id" + "road_id"
     # the only way to do this is to use SQL to create a new table with the primary key set, then compy into that table
     with sqlite3.connect(str(previous_file_path)) as conn:
         core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
