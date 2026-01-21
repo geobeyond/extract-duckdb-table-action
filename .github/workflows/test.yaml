@@ -238,11 +238,11 @@ jobs:
           git commit -m "Add base duckdb filled with base.gpkg data"
           cd ..
 
-          # modify test.duckdb to reflect changes in compare.gpkg
+          # remove two records from test.duckdb
           duckdb test-data/test.duckdb <<'EOF'
             INSTALL spatial;
             LOAD spatial;
-            DELETE FROM test_layer WHERE fid = 3;
+            DELETE FROM test_layer WHERE fid = 2 OR fid = 4;
           EOF
 
           # commit modified test.duckdb
@@ -259,7 +259,7 @@ jobs:
           table_name: "test_layer"
           output_format: "GPKG"
 
-      - name: "Check Outputs with geodiff"
+      - name: "Check delete with geodiff"
         env:
           CURRENT_FILE: ${{ steps.test.outputs.current_file }}
           PREVIOUS_FILE: ${{ steps.test.outputs.previous_file }}
@@ -302,7 +302,7 @@ jobs:
           expected_json='{
             "geodiff_summary": [
               {
-                "delete": 1,
+                "delete": 2,
                 "insert": 0,
                 "table": "test_layer",
                 "update": 0
