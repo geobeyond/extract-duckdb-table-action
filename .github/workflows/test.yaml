@@ -63,11 +63,11 @@ jobs:
             CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
             CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
             INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
-            CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT, address_id INTEGER, road_id INTEGER);
+            CREATE TABLE test_layer (geom BLOB, name TEXT, PROGRESSIVO_ACCESSO INTEGER, PROGRESSIVO_NAZIONALE INTEGER, PRIMARY KEY (PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE));
             INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
             INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (1, 'Point A', 1, 101);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (2, 'Point B', 2, 202);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point A', 1, 101);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point B', 2, 202);
           EOF
 
           duckdb test-data/test.duckdb <<'EOF'
@@ -93,9 +93,9 @@ jobs:
           duckdb test-data/test.duckdb <<'EOF'
             INSTALL spatial;
             LOAD spatial;
-            DELETE FROM test_layer WHERE fid = 2;
-            UPDATE test_layer SET name = 'Point A Modified' WHERE fid = 1;
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (3, 'Point C', 3, 303);
+            DELETE FROM test_layer WHERE PROGRESSIVO_ACCESSO = 2;
+            UPDATE test_layer SET name = 'Point A Modified' WHERE PROGRESSIVO_ACCESSO = 1;
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point C', 3, 303);
           EOF
 
           # commit modified test.duckdb
@@ -208,14 +208,14 @@ jobs:
             CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
             CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
             INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
-            CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT, address_id INTEGER, road_id INTEGER);
+            CREATE TABLE test_layer (geom BLOB, name TEXT, PROGRESSIVO_ACCESSO INTEGER, PROGRESSIVO_NAZIONALE INTEGER, PRIMARY KEY (PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE));
             INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
             INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (1, 'Point A', 1, 101);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (2, 'Point B', 2, 202);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (3, 'Point C', 3, 303);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (4, 'Point D', 4, 404);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (5, 'Point E', 5, 505);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point A', 1, 101);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point B', 2, 202);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point C', 3, 303);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point D', 4, 404);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point E', 5, 505);
           EOF
 
           # import geopackage into DUCKDB to initialize it
@@ -242,13 +242,13 @@ jobs:
           duckdb test-data/test.duckdb <<'EOF'
             INSTALL spatial;
             LOAD spatial;
-            DELETE FROM test_layer WHERE fid = 2 OR fid = 4;
+            DELETE FROM test_layer WHERE PROGRESSIVO_ACCESSO = 2 OR PROGRESSIVO_ACCESSO = 4;
           EOF
 
           # commit modified test.duckdb
           cd test-data
           git add test.duckdb
-          git commit -m "Deleted record with fid 2 and 4"
+          git commit -m "Deleted record with PROGRESSIVO_ACCESSO 2 and 4"
           cd ..
 
       - name: "Run extract-duckdb-table-action"
@@ -366,14 +366,14 @@ jobs:
             CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
             CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
             INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
-            CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT, address_id INTEGER, road_id INTEGER);
+            CREATE TABLE test_layer (geom BLOB, name TEXT, PROGRESSIVO_ACCESSO INTEGER, PROGRESSIVO_NAZIONALE INTEGER, PRIMARY KEY (PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE));
             INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
             INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (1, 'Point A', 1, 101);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (2, 'Point B', 2, 202);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (3, 'Point C', 3, 303);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (4, 'Point D', 4, 404);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (5, 'Point E', 5, 505);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point A', 1, 101);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point B', 2, 202);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point C', 3, 303);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point D', 4, 404);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point E', 5, 505);
           EOF
 
           # import geopackage into DUCKDB to initialize it
@@ -400,14 +400,14 @@ jobs:
           duckdb test-data/test.duckdb <<'EOF'
             INSTALL spatial;
             LOAD spatial;
-            UPDATE test_layer SET name = 'Updated Point B' WHERE fid = 2;
-            UPDATE test_layer SET name = 'Updated Point D' WHERE fid = 4;
+            UPDATE test_layer SET name = 'Updated Point B' WHERE PROGRESSIVO_ACCESSO = 2;
+            UPDATE test_layer SET name = 'Updated Point D' WHERE PROGRESSIVO_ACCESSO = 4;
           EOF
 
           # commit modified test.duckdb
           cd test-data
           git add test.duckdb
-          git commit -m "Updated records with fid 2 and 4"
+          git commit -m "Updated records with PROGRESSIVO_ACCESSO 2 and 4"
           cd ..
 
       - name: "Run extract-duckdb-table-action"
@@ -525,14 +525,14 @@ jobs:
             CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
             CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
             INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
-            CREATE TABLE test_layer (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, name TEXT, address_id INTEGER, road_id INTEGER);
+            CREATE TABLE test_layer (geom BLOB, name TEXT, PROGRESSIVO_ACCESSO INTEGER, PROGRESSIVO_NAZIONALE INTEGER, PRIMARY KEY (PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE));
             INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
             INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (1, 'Point A', 1, 101);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (2, 'Point B', 2, 202);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (3, 'Point C', 3, 303);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (4, 'Point D', 4, 404);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (5, 'Point E', 5, 505);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point A', 1, 101);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point B', 2, 202);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point C', 3, 303);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point D', 4, 404);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point E', 5, 505);
           EOF
 
           # import geopackage into DUCKDB to initialize it
@@ -559,14 +559,14 @@ jobs:
           duckdb test-data/test.duckdb <<'EOF'
             INSTALL spatial;
             LOAD spatial;
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (6, 'Inserted Point F', 6, 606);
-            INSERT INTO test_layer (fid, name, address_id, road_id) VALUES (7, 'Inserted Point G', 7, 707);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Inserted Point F', 6, 606);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Inserted Point G', 7, 707);
           EOF
 
           # commit modified test.duckdb
           cd test-data
           git add test.duckdb
-          git commit -m "Updated records with fid 2 and 4"
+          git commit -m "Inserted records with PROGRESSIVO_ACCESSO 6 and 7"
           cd ..
 
       - name: "Run extract-duckdb-table-action"

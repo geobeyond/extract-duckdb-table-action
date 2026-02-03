@@ -106,7 +106,7 @@ try:
         # to generate fid column automatically that generate differences when diffing
         # actually no way to setupt a more columns as PK in GDAL export, so we just set FID=address_id here
         conn.execute(
-            "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=address_id');",
+            "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=PROGRESSIVO_ACCESSO');",
             [table_name, str(current_tablebased_file_name), output_format.upper()],
         )
 
@@ -121,12 +121,12 @@ try:
             raise SystemExit(1)
 
     # need to set primary key as "address_id" + "road_id"
-    # the only way to do this is to use SQL to create a new table with the primary key set, then compy into that table
+    # the only way to do this is to use SQL to create a new table with the primary key set, then copy into that table
     with sqlite3.connect(str(output_file_path)) as conn:
         core.info(f"Setting primary key on extracted table '{table_name}' in {output_file_path}...")
         set_primary_key(
             table_name,
-            ["address_id", "road_id"],
+            ["PROGRESSIVO_ACCESSO", "PROGRESSIVO_NAZIONALE"],
             conn,
         )
 
@@ -184,7 +184,7 @@ try:
             # to generate fid column automatically that generate differences when diffing
             # actually no way to setupt a more columns as PK in GDAL export, so we just set FID=address_id here
             con_prev.execute(
-                "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=address_id');",
+                "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=PROGRESSIVO_ACCESSO');",
                 [table_name, str(previous_tablebased_file_name), output_format.upper()],
             )
 
@@ -203,12 +203,12 @@ try:
         )
 
     # need to set primary key as "address_id" + "road_id"
-    # the only way to do this is to use SQL to create a new table with the primary key set, then compy into that table
+    # the only way to do this is to use SQL to create a new table with the primary key set, then copy into that table
     with sqlite3.connect(str(previous_file_path)) as conn:
         core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
         set_primary_key(
             table_name,
-            ["address_id", "road_id"],
+            ["PROGRESSIVO_ACCESSO", "PROGRESSIVO_NAZIONALE"],
             conn,
         )
 
