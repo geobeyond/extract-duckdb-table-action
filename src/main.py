@@ -179,32 +179,47 @@ try:
             # con_prev.execute("CALL enable_logging(level = 'debug');")
             # con_prev.execute("CALL enable_logging(storage = 'stdout');")
 
-            # need to copy in table based filename to have the tablename inside the file match
-            # NOTE: we must use the same LAYER_CREATION_OPTIONS setting FID=address_id to avoid
-            # to generate fid column automatically that generate differences when diffing
-            # actually no way to setupt a more columns as PK in GDAL export, so we just set FID=address_id here
-            con_prev.execute(
-                "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=PROGRESSIVO_ACCESSO');",
-                [table_name, str(previous_tablebased_file_name), output_format.upper()],
-            )
+            # check if table exists in previous duckdb
+            res = con_prev.execute(
+                "SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = $1;",
+                [table_name],
+            ).fetchone()
+            if res and res[0] != 0:
+                # need to copy in table based filename to have the tablename inside the file match
+                # NOTE: we must use the same LAYER_CREATION_OPTIONS setting FID=address_id to avoid
+                # to generate fid column automatically that generate differences when diffing
+                # actually no way to setupt a more columns as PK in GDAL export, so we just set FID=address_id here
+                con_prev.execute(
+                    "COPY (SELECT * FROM query_table($1)) TO $2 (FORMAT 'GDAL', DRIVER $3, LAYER_CREATION_OPTIONS 'FID=PROGRESSIVO_ACCESSO');",
+                    [table_name, str(previous_tablebased_file_name), output_format.upper()],
+                )
 
-            # move to final output location
-            Path(previous_tablebased_file_name).rename(previous_file_path)
+                # move to final output location
+                Path(previous_tablebased_file_name).rename(previous_file_path)
 
-            # check that previous output file was created
-            if not previous_file_path.exists():
-                core.set_failed(f"Previous output file was not created: {previous_file_path}")
-                raise SystemExit(1)
+                # check that previous output file was created
+                if not previous_file_path.exists():
+                    core.set_failed(f"Previous output file was not created: {previous_file_path}")
+                    raise SystemExit(1)
 
+                core.info(f"Extracted previous table '{table_name}' to {previous_file_path}")
+
+            else:
+                core.info(f"Table '{table_name}' does not exist in previous DuckDB file; skipping extraction.")
+                # change previous_file_path to "first_commit" to indicate no previous table
+                previous_file_path = Path("first_commit")
+
+        # if not first commit do:
         # need to set primary key as "address_id" + "road_id"
         # the only way to do this is to use SQL to create a new table with the primary key set, then copy into that table
-        with sqlite3.connect(str(previous_file_path)) as conn:
-            core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
-            set_primary_key(
-                table_name,
-                ["PROGRESSIVO_ACCESSO", "PROGRESSIVO_NAZIONALE"],
-                conn,
-            )
+        if previous_file_path.exists():
+            with sqlite3.connect(str(previous_file_path)) as conn:
+                core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
+                set_primary_key(
+                    table_name,
+                    ["PROGRESSIVO_ACCESSO", "PROGRESSIVO_NAZIONALE"],
+                    conn,
+                )
 
         # diff beween current extracted file and previous version si delgated to a different action
     else:
