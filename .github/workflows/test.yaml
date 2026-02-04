@@ -17,8 +17,140 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  test-extract-first-commit:
+    name: "Test extract table that was not previously available"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Debug event.json"
+        if: ${{ !github.event.act }}
+        continue-on-error: true
+        run: cat "${GITHUB_EVENT_PATH}"
+
+      - name: "Debug Environment"
+        if: ${{ !github.event.act }}
+        continue-on-error: true
+        run: env
+
+      - name: "Install DuckDB CLI"
+        run: |
+          wget https://github.com/duckdb/duckdb/releases/download/v1.4.3/duckdb_cli-linux-amd64.zip
+          unzip duckdb_cli-linux-amd64.zip
+          chmod +x duckdb
+          mv duckdb /usr/local/bin/duckdb
+
+      - name: "Install SQLite3 (if missing)"
+        run: |
+          if command -v sqlite3 >/dev/null 2>&1; then
+            echo "sqlite3 already installed: $(sqlite3 --version)"
+          else
+            sudo apt-get update
+            sudo apt-get install -y sqlite3
+          fi
+
+      - name: "Create DuckDB with commit history"
+        run: |
+          mkdir -p test-data
+          # Create base GeoPackage with sqlite3
+          sqlite3 test-data/base.gpkg <<'EOF'
+            CREATE TABLE gpkg_spatial_ref_sys (srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY, organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL, definition TEXT NOT NULL, description TEXT);
+            CREATE TABLE gpkg_contents (table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL, identifier TEXT UNIQUE, description TEXT DEFAULT '', last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER);
+            CREATE TABLE gpkg_geometry_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL, srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL, CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name));
+            INSERT INTO gpkg_spatial_ref_sys VALUES ('WGS 84', 4326, 'EPSG', 4326, 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]', NULL);
+            CREATE TABLE test_layer (geom BLOB, name TEXT, PROGRESSIVO_ACCESSO INTEGER, PROGRESSIVO_NAZIONALE INTEGER, PRIMARY KEY (PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE));
+            INSERT INTO gpkg_contents VALUES ('test_layer', 'features', 'test_layer', '', datetime('now'), NULL, NULL, NULL, NULL, 4326);
+            INSERT INTO gpkg_geometry_columns VALUES ('test_layer', 'geom', 'POINT', 4326, 0, 0);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point A', 1, 101);
+            INSERT INTO test_layer (name, PROGRESSIVO_ACCESSO, PROGRESSIVO_NAZIONALE) VALUES ('Point B', 2, 202);
+          EOF
+
+          duckdb test-data/test.duckdb <<'EOF'
+            INSTALL sqlite;
+            LOAD sqlite;
+            CREATE OR REPLACE TABLE test_layer AS
+              SELECT * FROM sqlite_scan('test-data/base.gpkg', 'test_layer');
+            SELECT * FROM test_layer;
+          EOF
+
+          # create git repository for testing git history mode
+          git init test-data
+          cd test-data
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+          # add test.duckdb to git
+          git add test.duckdb
+          git commit -m "Add base duckdb filled with base.gpkg data"
+          cd ..
+
+      - name: "Run Action to test"
+        id: test
+        uses: ./
+        with:
+          duckdb_file: "test-data/test.duckdb"
+          table_name: "test_layer"
+          output_format: "GPKG"
+
+      - name: "Check Outputs"
+        env:
+          CURRENT_FILE: ${{ steps.test.outputs.current_file }}
+          PREVIOUS_FILE: ${{ steps.test.outputs.previous_file }}
+        run: |
+          echo "Current File: $CURRENT_FILE"
+          echo "Previous File: $PREVIOUS_FILE"
+
+          current="test-data/"$(basename "$CURRENT_FILE")
+          previous="test-data/"$(basename "$PREVIOUS_FILE")
+
+          # dump contents of geopackage files for debugging
+          # echo "Contents of current file:"
+          # sqlite3 "$current" ".tables"
+          # echo "Contents of previous file:"
+          # sqlite3 "$previous" ".tables"
+          # echo "--------------------------------"
+
+          # check that in current geopackage file the table exists (using sqlite3)
+          TABLE_NAME="test_layer"
+          if sqlite3 "$current" "SELECT table_name FROM gpkg_contents WHERE table_name = '$TABLE_NAME';" | grep -q "$TABLE_NAME"; then
+            echo "Table '$TABLE_NAME' exists in current file."
+          else
+            echo "Error: Table '$TABLE_NAME' does not exist in current file."
+            exit 1
+          fi
+
+          # check that previous geopackage DO NOT exist (as this is the first commit)
+          if [ -f "$previous" ]; then
+            echo "Error: Previous file '$previous' should not exist for first commit."
+            exit 1
+          else
+            echo "Previous file does not exist as expected for first commit."
+          fi
+
+          # check returned file names contain the expected substrings
+          EXPECTED_CURRENT_FILE="test-data/test-test_layer-current.gpkg"
+          EXPECTED_PREVIOUS_FILE="first_commit"
+          if [[ "$CURRENT_FILE" != *"$EXPECTED_CURRENT_FILE"* ]]; then
+            echo "Error: Current file name does not match expected value."
+            exit 1
+          else
+            echo "Current file name matches expected value."
+          fi
+          if [[ "$PREVIOUS_FILE" != *"$EXPECTED_PREVIOUS_FILE"* ]]; then
+            echo "Error: Previous file name does not match expected value."
+            exit 1
+          else
+            echo "Previous file name matches expected value."
+          fi
+
   test-extract-between-commit:
-    name: "Text extract between two commits"
+    name: "Test extract between two commits"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

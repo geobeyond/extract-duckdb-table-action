@@ -196,20 +196,20 @@ try:
                 core.set_failed(f"Previous output file was not created: {previous_file_path}")
                 raise SystemExit(1)
 
+        # need to set primary key as "address_id" + "road_id"
+        # the only way to do this is to use SQL to create a new table with the primary key set, then copy into that table
+        with sqlite3.connect(str(previous_file_path)) as conn:
+            core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
+            set_primary_key(
+                table_name,
+                ["PROGRESSIVO_ACCESSO", "PROGRESSIVO_NAZIONALE"],
+                conn,
+            )
+
         # diff beween current extracted file and previous version si delgated to a different action
     else:
         core.info(
             f"No previous commit with the DuckDB file {duckdb_file_path} found; skipping previous table extraction."
-        )
-
-    # need to set primary key as "address_id" + "road_id"
-    # the only way to do this is to use SQL to create a new table with the primary key set, then copy into that table
-    with sqlite3.connect(str(previous_file_path)) as conn:
-        core.info(f"Setting primary key on extracted table '{table_name}' in {previous_file_path}...")
-        set_primary_key(
-            table_name,
-            ["PROGRESSIVO_ACCESSO", "PROGRESSIVO_NAZIONALE"],
-            conn,
         )
 
 except GitError as ge:
@@ -234,6 +234,7 @@ finally:
         core.set_output("previous_file", str(previous_file_path))
         core.info(f"Set previous_file output: {str(previous_file_path)}")
     else:
+        core.set_output("previous_file", "first_commit")
         core.info("No previous_file output set (file does not exist)")
 
 core.info("Extract DuckDB Tables Action completed")
